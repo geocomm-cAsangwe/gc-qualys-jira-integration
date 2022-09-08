@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Qualys to Jira Integration
+
+Resources:
+  AdditionalPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: RootRole
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "ssm:GetParametersByPath"
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*"
+          - Effect: Allow
+            Action: "ses:*"
+            Resource: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*"
+      PolicyName: gc-qualys-jira-integration-lambda-policy
+      Roles:
+        - !Ref RootRole
+
+  RootRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: # this is the Trust Relationship tab within the AWS IAM Console.
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Description: Role used by Qualys to Jira Integration lambda
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaENIManagementAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      RoleName: gc-qualys-jira-integration-lambda-role
+
+  QualysJiraIntegrationFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: RootRole
+    Properties:
+      FunctionName: gc-qualys-jira-integration
+      Handler: functionHandler.lambdaHandler
+      Runtime: python3.9
+      CodeUri: ./src
+      Role: !GetAtt RootRole.Arn
+      MemorySize: 2024 # 2GB
+      Tags:
+        Product: "qualys-jira-integration"
+      Environment:
+        Variables:
+          jira_user: "#{jira_user}"
+          jira_token: "#{jira_token}"
+          jira_key: "#{jira_key}"
+          jira_url: "#{jira_url}"
+          qualys_assestgroup: "#{qualys_assestgroup}"
+          qualys_ips: "#{qualys_ips}"
+          qualys_optiontitle: "#{qualys_optiontitle}"
+          qualys_scanid: "#{qualys_scanid}"
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Name: gc-qualys-jira-integration-schedule
+            Schedule: "#{QualysJiraIntegrationCronSchedule}"
+            # Run at 7:00pm every Sunday of every month.
+            #https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions
+            #https://docs.oracle.com/cd/E12058_01/doc/doc.1014/e12030/cron_expressions.htm
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: QualysJiraIntegrationFunction
+    Properties:
+      LogGroupName:
+        !Join ["/", ["/aws/lambda", !Ref QualysJiraIntegrationFunction]]
+      RetentionInDays: "#{LogRetention}" # days

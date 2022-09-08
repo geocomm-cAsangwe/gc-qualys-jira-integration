@@ -1,0 +1,29 @@
+{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::610335995013:role/gc-cloudmap-deploy-service-role",
+          "arn:aws:iam::468787527360:role/gc-cloudmap-deploy-service-role",
+          "arn:aws:iam::863522959145:role/gc-cloudmap-deploy-service-role"
+        ]
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::gc-qualys-jira-integration/*"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::610335995013:role/gc-cloudmap-deploy-service-role",
+          "arn:aws:iam::468787527360:role/gc-cloudmap-deploy-service-role",
+          "arn:aws:iam::863522959145:role/gc-cloudmap-deploy-service-role"
+        ]
+      },
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::gc-qualys-jira-integration"
+    }
+  ]
+}

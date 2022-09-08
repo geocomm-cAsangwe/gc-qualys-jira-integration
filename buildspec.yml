@@ -1,0 +1,39 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - echo Installing SAM CLI
+      - pip install --user aws-sam-cli
+      - npm install -g @octopusdeploy/octojs
+      - export PATH=$PATH:$USER_BASE_PATH/bin
+      - dotnet tool install --global Octopus.DotNet.Cli --version 7.3.7
+      - dotnet octo --version
+      - aws --version
+      - sam --version
+      - apt-get update && apt-get install libgl1 # per https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
+  pre_build:
+    commands:
+      - echo Build Environment is ${BUILD_ENV}
+      # Permissions
+      - chmod 700 $CODEBUILD_SRC_DIR/build.sh
+      - head -50 $CODEBUILD_SRC_DIR/build.sh
+  build:
+    commands:
+      - echo Start BUILD section
+      - ./build.sh ${BUILD_ENV}
+      # successfully deploys lambda
+      # - sam build
+      # - sam package --template-file .aws-sam/build/template.yaml --s3-bucket gbiniek-test1 --output-template-file package.yml --region us-east-1
+      # - zip gc-cloudmap-s3-authorizer-package.1.0.0.zip package.yml
+      # - octojs push --package gc-cloudmap-s3-authorizer-package.1.0.0.zip --server https://geocomm.octopus.app/ --apiKey API-VV3VVHND0HADP05HQZ3E590PW6C
+      # - dotnet-octo create-release --project "Lambda - S3 Authorizer" --version 1.0.0 --server https://geocomm.octopus.app/ --apiKey API-VV3VVHND0HADP05HQZ3E590PW6C --deployto=Dev --ignoreSslErrors      
+      # - ls
+      # - sam deploy --template-file .aws-sam/template.yaml --stack-name gbiniek-test1 --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --region us-east-1
+      # - cd src
+      # - npm install
+      # - octojs pack -O bin --gitignore --dependencies prod
+  post_build:
+    commands:
